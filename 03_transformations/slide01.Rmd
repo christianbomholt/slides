@@ -1,0 +1,357 @@
+---
+title: "Module 3   "
+subtitle: " </br> Tranformation af data"
+author: "Christian Bomholt"
+date: "2018/11/4"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+library(readr)
+library(DT)
+shower <- function(df){
+  datatable(df %>% head(5), options = list(dom='tp'), rownames = F)
+}
+```
+
+
+---
+
+# Indhold af modul
+
+- Transformation af data med `dplyr`
+- En teknik kaldet `piping`
+- tidyr
+
+---
+
+class: inverse, middle
+
+# Transformation af data med `dplyr`
+
+---
+
+###  dplyr
+
+```{r}
+library(dplyr)
+```
+
+Pakken muliggør 
+- Valg af observationer baseret på deres værdi `(filter())`.
+- Sortér rækker baseret på værdi `(arrange())`.
+- Vælg variable / søjler baseret på navn `(select())`.
+- Lav nye variable som funktion af eksisterende variable `(mutate())`.
+- Kollaps mange værdier til et summary `(summarise())`.
+
+Disse kan bruges sammen med `group_by()` som ændrer hvordan hver af disse funktioner aggerer. Funktionerne vil operere gruppe-til-gruppe. Disse 6 funktioner vil være udsagnsordene i vores sprog når vi snakker data-manipulation.
+
+
+---
+
+### Tilføjelse af søjler
+
+```{r}
+avocados <- read_csv("../data/avocado.csv")[,-1]
+head(avocados)
+avocados <- mutate(avocados, month = as.numeric(substr(Date,6,7))) 
+avocados <- mutate(avocados, day = as.numeric(substr(Date,9,10))) 
+```
+
+`mutate()` tager data som første argument og den nye søjle definition som andet argument.
+
+---
+
+### Filtrer søjler
+
+`filter()` tager data som første argument og derefter kan man indsætte så mange filtrerings krav man har list til
+
+```{r,eval=FALSE}
+filter(avocados, month == 1)
+filter(avocados, month == 1, day == 1)
+filter(avocados, month == 1, day == 1, year=2015)
+```
+
+---
+
+### Bemærk! Farligt at lave krav med
+
+"Computers use finite precision arithmetic (they obviously can’t store an infinite number of digits!) so remember that every number you see is an approximation"
+
+src: https://r4ds.had.co.nz/transform.html
+
+$$
+  [\sqrt(2)]^2 == 2
+$$
+
+```{r}
+(1 / 8 * 8) == 1
+```
+
+```{r}
+(sqrt(2) ^ 2) == 2
+```
+
+```{r}
+(1 / 49 * 49) == 1
+```
+
+---
+
+### Kan redes med `near()`
+
+```{r}
+near(sqrt(2) ^ 2,  2)
+```
+
+```{r}
+near(1 / 49 * 49, 1)
+```
+
+---
+
+### Logiske operatorer
+
+<img src="../mod1/libs/logical.png" width="600" margin-left="auto" margin-right= "auto">
+
+Vi kan bruge logiske operatorer
+
+- `&` er “og”
+- `|` er “eller”
+- `!` er “not”
+
+```{r,eval=FALSE}
+filter(avocados, AveragePrice < 0.5) 
+filter(avocados, AveragePrice < 0.5 | `Total Volume`<450) 
+```
+
+
+---
+
+### Pas på med `NA` værdier
+
+```{r}
+NA + 10
+NA == NA
+```
+
+Checks med `NA` returnerer `NA`, så det kan være mindre intuitivt hvad de logsike operatorer returnerer her.
+
+- Brug `is.na()`
+
+```{r}
+is.na(NA)
+```
+
+---
+
+### Vælg søjler med `select()`
+
+`select()` tager data som første argument derefter søjle navne eller udtryk som ønskes.
+
+```{r,eval=FALSE}
+select(avocados, year, month, day)
+select(avocados, year:day)
+```
+
+Kan også bruges til at fravælge søjler:
+
+```{r,eval=FALSE}
+select(avocados, -(year:day))
+select(avocados, -day)
+```
+
+
+---
+
+### Sortering
+
+`arrange()` tager data som første argument og de søjler som skal sorteres efter.
+
+```{r}
+subset <- select(avocados,day,month,year,Date)
+arrange(avocados, year, month, day)[1:3,]
+```
+
+---
+
+### Omdøb søjler
+
+`rename()` tager data som første argument og det nye søjle-navn sat lig med det gamle.
+
+```{r}
+(avocados <- rename(avocados, total_volume = `Total Volume`))
+
+```
+
+---
+
+### Summarise data
+
+
+```{r}
+summarise(avocados, avgprice = mean(AveragePrice))
+```
+
+```{r}
+summarise(avocados, avgprice = mean(log(AveragePrice - 1-runif(1))))
+```
+
+
+```{r}
+summarise(avocados, avgp = mean(log(AveragePrice - 1-runif(1)),na.rm = T))
+```
+
+
+--- 
+
+
+### Grupper data med `group_by()`
+
+`group_by()` tager data som første argument og efterfølgende hvilke søjler der skal grupperes på.
+
+```{r}
+by_region <- group_by(avocados, region,year)
+summarise(by_region, avgprice = mean(AveragePrice, na.rm = TRUE))
+```
+
+---
+
+### Mere omfattende `groupby()`
+
+```{r}
+by_region <- group_by(avocados, region,year)
+region_stats <- summarise(by_region,
+                   count = n(),
+                   vol = mean(total_volume, na.rm = TRUE),
+                   prc = mean(AveragePrice, na.rm = TRUE)
+)
+region_stats <- filter(region_stats, count > 40, vol < 1e6)
+
+```
+
+```{r,echo=FALSE, fig.height=4}
+library(ggplot2)
+ggplot(data = region_stats, mapping = aes(x = vol, y = prc)) +
+  geom_point(aes(size = count), alpha = 1/3) +
+  geom_smooth(se = FALSE)
+```
+
+---
+
+class: inverse, middle
+
+# Exercise
+
+- Use `dplyr` on the `2000.csv` to:
+  - filter out all weekday (Mon-Fri)
+  - group data by airline
+  - get mean Arrival delay
+  - print the 6 most delayed airlines
+
+---
+
+# Piping
+
+Lader os gøre sammensatte funktioner let-læselige
+
+$$
+  f\circ g \,  \circ \, h(x) = f(g(h(x)))
+$$
+
+Med en smule forceret notation lader `piping` os skrive sammensatte funktioner som
+
+$$
+  x \circ h \, \circ g \, \circ f = f(g(h(x)))
+$$
+
+---
+
+## Piping
+
+Så
+
+```{r,eval=F}
+region_stats <- summarise(
+  group_by(
+    filter(avocados, count > 40, vol < 1e6), region,year),
+                   count = n(),
+                   vol = mean(total_volume, na.rm = TRUE),
+                   prc = mean(AveragePrice, na.rm = TRUE)
+)
+```
+
+kan udtrykkes som
+
+```{r,eval=FALSE}
+region_stats <- avocados %>%
+  group_by(region) %>%
+  summarise(
+    count = n(),
+    vol = mean(total_volume, na.rm = TRUE),
+    prc = mean(averageprice, na.rm = TRUE)
+    ) %>% filter(count > 40, vol < 1e6)
+```
+
+---
+
+class: inverse, middle
+
+# Opgave
+
+---
+
+
+## Opgave
+
+Brug `dplyr` til at fjerne optioner i datasættet  `'SPXoptions_changed.xlsx'` som overholder følgende
+
+
+1. Bid-ask spread større end $5
+2. Afstand fra unit moneyness højere end 0.4, i.e. $|(K/S)-1|>0.4$ hvor $S=2080.15$ og $K=$ nonbundle
+3. En bid-price på $0
+4. Strikes [nonbundle] mindre end $1800.
+5. cp_flag = C
+Behold til sidst kun variablene `exdate, cp_flag, best_bid, best_offer, nonbundle, mid`
+
+---
+
+## Opgave
+
+```{r, echo=FALSE, fig.width=10,fig.height=5}
+library(readxl)
+library(plotly)
+options <- read_excel("../data/xl/SPXoptions_changed.xlsx") 
+S_init = 2080.15
+df <- options %>% mutate(exdate = as.Date(exdate)-as.Date(date)) 
+df$exdate <- as.numeric(df$exdate)/365
+b_bool <- as.numeric(df$best_bid!=0)
+b = data.frame(x=1:length(b_bool))
+b$x[b_bool==0] <-"Bid=0"
+b$x[b_bool!=0] <-"Bid>0"
+
+b_bool =as.factor(b$x)#*2 + as.numeric(df$best_bid==0)
+# , color= b_bool, colors = jbcolor[c(2,5)]
+plot_ly(x = abs(df$nonbundle/S_init-1), y = df$best_offer-df$best_bid) %>%
+  add_markers(symbol = b_bool, name = "hollow", alpha=0.9) %>%
+  layout(xaxis=list(title="|K/S-1|"), yaxis= list(title="Bid-ask spread"),
+         shapes = list(
+           list(type = "rect",
+                fillcolor = 'rgb(0,128,128)', line = list(color = 'rgb(0,128,128)'), opacity = 0.3,
+                x0 = 0.4, x1 = 1, xref = "x",
+                y0 = 0, y1 = 20, yref = "y"),
+           list(type = "rect",
+                fillcolor = 'rgb(255,165,0)', line = list(color = 'rgb(255,165,0)'), opacity = 0.3,
+                x0 = 0, x1 = 1, xref = "x",
+                y0 = 5, y1 = 20, yref = "y"))
+  )
+```
+

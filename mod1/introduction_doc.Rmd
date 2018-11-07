@@ -1,0 +1,115 @@
+---
+title: "Introduction"
+author: "christianbomholt"
+date: "September 24, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Avocado prices
+
+> The table below represents weekly 2018 retail scan data for National retail volume (units) and price. Retail scan data comes directly from retailers’ cash registers based on actual retail sales of Hass avocados. Starting in 2013, the table below reflects an expanded, multi-outlet retail data set. Multi-outlet reporting includes an aggregation of the following channels: grocery, mass, club, drug, dollar and military. The Average Price (of avocados) in the table reflects a per unit (per avocado) cost, even when multiple units (avocados) are sold in bags. The Product Lookup codes (PLU’s) in the table are only for Hass avocados. Other varieties of avocados (e.g. greenskins) are not included in this table.
+
+Some relevant columns in the dataset:
+
+Date - The date of the observation
+AveragePrice - the average price of a single avocado
+type - conventional or organic
+year - the year
+Region - the city or region of the observation
+Total Volume - Total number of avocados sold
+4046 - Total number of avocados with PLU 4046 sold
+4225 - Total number of avocados with PLU 4225 sold
+4770 - Total number of avocados with PLU 4770 sold
+
+
+## Import data
+
+```{r}
+avocadoCSV <- "../data/avocado.csv"
+
+avocadoDF <- read.csv(avocadoCSV)[,-1]
+head(avocadoDF, 10)
+```
+
+## Vizualize general dynamics
+
+```{r}
+library(ggplot2)
+library(dplyr)
+ggplot(data = avocadoDF %>% filter(type=="conventional") %>% 
+         mutate(Date=as.Date(Date))) +
+  geom_point(mapping = aes(x = Date, y = AveragePrice), alpha = 5/50) +
+  xlab("Date") +
+  ylab("Average price (of a single avocado)")
+```
+
+
+```{r}
+avocadoCSV_subset <- "../data/subset_avocado.csv"
+
+avocadoDF_subset <- read.csv(avocadoCSV_subset)[,-1]
+xtabs(AveragePrice~region+type,avocadoDF_subset)
+```
+
+## More advanced cross-tabbing
+
+
+```{r}
+xt <- xtabs(AveragePrice~region+type,
+            aggregate(AveragePrice~region+type,avocadoDF,mean))
+```
+
+
+## Linear models
+
+```{r}
+model <- lm(AveragePrice ~ as.numeric(as.Date(Date)),avocadoDF)
+summary(model)
+```
+```{r}
+library(broom)
+tidy(summary(model))
+```
+
+```{r}
+avocadoDF$Date <- avocadoDF$Date %>% as.Date() 
+ggplot(avocadoDF,aes(Date,AveragePrice))+
+  geom_point(alpha = 5/50)+
+  geom_smooth(method='lm')
+```
+
+
+## Measuring runtime
+
+```{r}
+system.time(gaussianMean<-mean(rnorm(10000)))
+```
+
+```{r,eval=FALSE}
+ ?proc.time
+```
+
+
+>The first two entries are the total user and system CPU times of the current 
+R process and any child processes on which it has waited, and the
+third entry is the ‘real’ elapsed time since the process was started.
+
+>The definition of ‘user’ and ‘system’ times is from your OS.
+Typically it is something like _The ‘user time’ is the CPU time charged for the execution of user
+instructions of the calling process. The ‘system time’ is the CPU
+time charged for execution by the system on behalf of the calling process._
+
+## Read from SQL
+
+```{r}
+library(DBI)
+library(RSQLite)
+con <- dbConnect(SQLite(), dbname="../data/flight_data/airports.sqlite")
+dbReadTable(con, "avocados") %>% head
+```
+
+

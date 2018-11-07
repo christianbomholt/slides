@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Module 1</title>
+    <meta charset="utf-8">
+    <meta name="author" content="Christian Bomholt" />
+    <link href="libs/remark-css/default.css" rel="stylesheet" />
+    <link href="libs/remark-css/default-fonts.css" rel="stylesheet" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Module 1
+## </br> Installing packages in R
+### Christian Bomholt
+### 2018/11/7
+
+---
+
+
+
+
+
+---
+
+# Indhold af modul
+
+- Installation af pakker
+- Funktioner til indlæsning af pakker 
+
+---
+
+class: inverse, middle
+
+# Installation af pakker
+
+---
+
+# install.packages()
+
+Installation af pakker foregår ved brug af `install.packages()` kommandoen, som tager navnet på en pakke som argument i string format. 
+
+
+```r
+install.packages('tidyr')
+```
+
+Man kan installere flere pakker ved at give en vektor af syrings til `install.packages()`
+
+
+```r
+packages &lt;- c('dplyr','plotly','rmarkdown',
+              'tidyr')
+
+install.packages(packages)
+```
+
+---
+
+class: inverse, middle
+
+# Funktioner til indlæsning af pakker 
+
+---
+
+#library()
+
+Brug af installeret pakke sker ved kommandoen `library()`.
+
+
+```r
+install.packages('tidyr')
+library(tidyr)
+```
+
+Dette giver adgang til pakkens funktioner som her `gather()` og `spread()`
+
+
+```r
+stocks &lt;- tibble(
+  time = as.Date('2009-01-01') + 0:9,
+  X = rnorm(10, 0, 1),
+  Y = rnorm(10, 0, 2),
+  Z = rnorm(10, 0, 4)
+)
+
+gather(stocks, stock, price, -time)
+```
+
+---
+
+# Fjern indlæst pakke fra miljø
+
+Ved indlæsning af flere pakker øges sandsynligheden for at 2 pakker indeholder en funktion med samme navn, og det er ikke altid tydeligt hvilken version man ender med at bruge.
+
+
+```r
+library(dplyr)
+library(plyr)
+#You have loaded plyr after dplyr - this is likely to cause problems
+```
+
+Eksempelvis ved `plyr` og `dplyr` pakkerne kan det være fordel agtigt at kunne fjerne den ene hvis den anden ønskes loaded. 
+
+
+```r
+detach("package:tidyr", unload=TRUE)
+```
+
+---
+
+# Alternativer til library
+  
+Pakke-funktionalitet kan også bruges uden `library` kommandoen, ved isedet at skrive pakkens navn e.g. `tidyr` efterfulgt af dobelt kolon `::` 
+
+
+```r
+stocks &lt;- tibble(
+  time = as.Date('2009-01-01') + 0:9,
+  X = rnorm(10, 0, 1),
+  Y = rnorm(10, 0, 2),
+  Z = rnorm(10, 0, 4)
+)
+
+tidyr::gather(stocks, stock, price, -time)
+```
+
+##### Bemærk her behøver man ikke at loade hele pakken, men kan nøjes med at pege på de funktioner man ønskser bruge. 
+
+---
+
+# Alternativer til library
+
+Man kan også loade pakker med `require()` kommandoen. Denne kaster ikke fejl hvis pakken ikke findes. Kan anvendes som
+
+
+```r
+if (require('foo')) {
+  awesome_foo_function()
+} else {
+  warning('You missed an awesome function')
+}
+```
+
+### Bemærk:
+
+Mange fraråder denne da den essentielt set blot forsøger at loade en pakke, mens `library()` loader pakken. Se evt.:
+https://yihui.name/en/2014/07/library-vs-require/
+
+---
+
+# Alternativer til library
+
+pacman kan komprimere samt lette besværet ved installation af pakker. `p_load()` kommandoen loader pakken og installerer den såfremt den ikke allerede er installeret. *God at bruge når man skal dele kode*.
+
+
+```r
+library(pacman)
+p_load(
+  dplyr,
+  plotly,
+  rmarkdown,
+  tidyr)
+```
+
+Kan også anvendes med `::` notation
+
+
+```r
+pacman::p_load(...)
+```
+
+---
+
+class: inverse, middle
+
+# Opgave 
+
+---
+
+# Opgave
+
+- Installér
+  - `dplyr`,`tidyr` 
+  - `ggplot2` og `readxl` med et kald til `install.packages`
+- prøv kommandoen `diamonds`
+- indlæs pakken `ggplot2` 
+- prøv kommandoen `diamonds`
+- `mutate(diamonds,price_carat=price/carat)`
+
+
+
+(Blot til reference så kan alle 4 pakker installeres med `install.packages(tidyverse)`)
+
+
+```r
+tidyverse_packages()
+#&gt;  [1] "broom"      "cli"        "crayon"     "dbplyr"     "dplyr"     
+#&gt;  [6] "forcats"    "ggplot2"    "haven"      "hms"        "httr"      
+#&gt; [11] "jsonlite"   "lubridate"  "magrittr"   "modelr"     "pillar"    
+#&gt; [16] "purrr"      "readr"      "readxl"     "reprex"     "rlang"     
+#&gt; [21] "rstudioapi" "rvest"      "stringr"    "tibble"     "tidyr"     
+#&gt; [26] "xml2"       "tidyverse" 
+```
+
+https://www.tidyverse.org/
+    </textarea>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function() {
+  var d = document, s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})();</script>
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  tex2jax: {
+    skipTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+  }
+});
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://cdn.bootcss.com/mathjax/2.7.1/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

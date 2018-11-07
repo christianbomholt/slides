@@ -1,0 +1,178 @@
+---
+title: "avocado"
+author: "Cbom"
+date: "September 14, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE, message = FALSE}
+# knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+
+#knitr::opts_knit$set(root.dir = dirname("/home/R/TI/mod1"))
+#knitr::opts_knit$set(root.dir = "/home/R/TI/mod1")
+# 
+library(dygraphs)
+library(dplyr)
+```
+
+## Context
+It is a well known fact that Millenials LOVE Avocado Toast. It's also a well known fact that all Millenials live in their parents basements.
+
+Clearly, they aren't buying home because they are buying too much Avocado Toast!
+
+But maybe there's hope... if a Millenial could find a city with cheap avocados, they could live out the Millenial American Dream.
+
+Content
+This data was downloaded from the Hass Avocado Board website in May of 2018 & compiled into a single CSV. Here's how the Hass Avocado Board describes the data on their website:
+
+> The table below represents weekly 2018 retail scan data for National retail volume (units) and price. Retail scan data comes directly from retailers’ cash registers based on actual retail sales of Hass avocados. Starting in 2013, the table below reflects an expanded, multi-outlet retail data set. Multi-outlet reporting includes an aggregation of the following channels: grocery, mass, club, drug, dollar and military. The Average Price (of avocados) in the table reflects a per unit (per avocado) cost, even when multiple units (avocados) are sold in bags. The Product Lookup codes (PLU’s) in the table are only for Hass avocados. Other varieties of avocados (e.g. greenskins) are not included in this table.
+
+Some relevant columns in the dataset:
+
+Date - The date of the observation
+AveragePrice - the average price of a single avocado
+type - conventional or organic
+year - the year
+Region - the city or region of the observation
+Total Volume - Total number of avocados sold
+4046 - Total number of avocados with PLU 4046 sold
+4225 - Total number of avocados with PLU 4225 sold
+4770 - Total number of avocados with PLU 4770 sold
+
+
+## Import data
+
+
+
+
+```{r cars}
+avocadoCSV <- "../data/avocado.csv"
+
+avocadoDF <- read.csv(avocadoCSV)[,-1]
+head(avocadoDF, 10)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+library(tidyr)
+dygraph(avocadoDF %>%
+          filter(type=="conventional") %>%
+          select(Date,AveragePrice,region) %>%
+          #head(1000) %>%
+          spread(region,AveragePrice) %>% `row.names<-`(.,.[,1])) %>% 
+  dyLegend(show = "follow")
+#  dyLegend(width = 100)
+"knitr::opts_knit$set(root.dir = dirname(rstudioapi::getActiveDocumentContext()$path))"
+
+```
+
+```{r}
+xtabs(X4770~region+type,avocadoDF)
+```
+
+
+```{r}
+xt <- xtabs(AveragePrice~region+type,
+            aggregate(AveragePrice~region+type,avocadoDF,mean))
+xt
+```
+
+
+```{r}
+xt <- xtabs(AveragePrice~.,avocadoDF %>%
+          select(Date,AveragePrice,region,type) %>%
+        group_by(region,type) %>%
+        summarise(AveragePrice=mean(AveragePrice,na.rm=T)) ) 
+xt
+```
+
+```{r}
+ inner <- factor(sample(letters[1:25], 100, replace = TRUE))
+ inout <- factor(sample(LETTERS[1:5], 25, replace = TRUE))
+ fr <- data.frame(inner = inner, outer = inout[as.integer(inner)])
+ fr %>% head
+ xtabs(~ inner + outer, fr, sparse = TRUE)
+```
+
+
+```{r}
+library(plotly)
+"
+AveragePrice
+<dbl>
+Total.Volume
+<dbl>
+X4046
+<dbl>
+"
+
+#plot_ly(xt %>% as.data.frame(), type = "bar", x=~region, y=~Freq)
+plot_ly(avocadoDF %>%
+filter(type=="conventional") %>%
+filter(region=="Albany"),
+x=~AveragePrice, y=~Total.Volume, type = "scattergl")
+```
+```{r}
+library(stringr)
+library(RColorBrewer)
+pal <- RColorBrewer::brewer.pal(n = 5,name = "Spectral") 
+avocadoDF %>%
+filter(type=="conventional") %>%
+filter(str_detect(region, "^A|^B")) %>% droplevels() %>%  
+plot_ly(.,x=~AveragePrice, y=~Total.Volume, color = ~region, type = "scattergl", colors = pal)
+```
+
+
+```{r}
+dfFit = avocadoDF %>%  filter(str_detect(region, "^A|^B")) %>% 
+  group_by(region,type) %>%
+  do(model = lm(Total.Volume ~ AveragePrice, data = .))
+
+# get the coefficients by group in a tidy data_frame
+dfCoef = broom::tidy(dfFit, model)
+dfCoef %>% head
+```
+```{r}
+dfCoef <- 
+  dfCoef %>%
+  ungroup %>%
+  select(region,term,estimate,type) %>%
+  mutate(term = recode(term,"(Intercept)" = "alpha", "AveragePrice" = "beta")) %>%
+  spread(term,estimate) 
+
+#%>% mutate(beta  = AveragePrice) %>% select(-AveragePrice)
+dfCoef %>% head
+```
+
+```{r}
+dfpred = avocadoDF %>%
+  filter(str_detect(region, "^A|^B")) %>%
+  select(region,Total.Volume,AveragePrice,type) %>% 
+  inner_join(.,dfCoef, by=c("region","type")) %>% 
+  mutate(pred = beta*AveragePrice + alpha)
+dfpred %>% head
+```
+
+```{r}
+dfpred %>% 
+  filter(type=="conventional") %>% 
+filter(str_detect(region, "^Boise|^Buff")) %>%   droplevels() %>% 
+plot_ly(.,x=~AveragePrice, y=~Total.Volume, color = ~region, type = "scattergl", colors = pal) %>%
+  add_trace(y = ~pred, mode = 'lines') 
+
+```
+
+
+```{r}
+dygraph(avocadoDF %>%
+          filter(type=="conventional") %>%
+          select(Date,AveragePrice,region) %>%
+          #head(1000) %>%
+          spread(region,AveragePrice) %>% `row.names<-`(.,.[,1])) %>% 
+  dyLegend(show = "follow")
+```
+

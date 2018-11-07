@@ -1,0 +1,269 @@
+---
+title: "Module 4   "
+subtitle: " </br> Vizualization of data"
+author: "Christian Bomholt"
+date: "2018/3/12"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(warning=FALSE, message=FALSE, fig.height = 4, fig.width = 9,dpi=300)
+
+library(ggplot2)
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(tibble)
+library(xts)
+```
+
+
+---
+
+# Indhold af modul
+
+- Kort gennemgang af plotting biblioteker
+  0. `Base`
+  1. `plotly`
+  2. `highcharter` 
+  3. `dygraphs`
+  4. `ggplot2`
+  5. `leaflet`
+
+---
+
+class: inverse, middle
+
+# Plotting: Exempel Hungarnske 10 års renter
+
+---
+
+### Base plotting
+
+```{r}
+df <- read_excel('../data/xl/R.xlsx',col_names = T)
+df$Date <- as.Date(df$Date,origin = '1970-01-01')
+
+plot(df$Date,df$Yield, ylab = 'Yield', xlab='Date')
+```
+
+
+---
+
+### Multiple lines
+
+```{r}
+vals <- c('Yield','CPI')
+matplot(df$Date,df[,vals],ylab='Value',
+        xlab='Date',xaxt="n", pch=c('o+'))
+legend(15000, 2, vals, pch = "o+", col = rep(c(1,2)))
+```
+
+
+---
+
+### `ggplot2`
+
+```{r}
+library(ggplot2)
+ggplot(df,aes(x=Date, y=Yield)) +
+  geom_point()
+```
+
+---
+
+### Multiple lines
+
+```{r}
+df %>% select(Date,Yield,CPI) %>% gather(key,value,-Date) %>% 
+ggplot(aes(x=Date, y=value, color=key)) +
+  geom_line() +
+  geom_point()
+```
+
+
+---
+
+### Interaktive plots `plotly`
+
+```{r, dpi = 80}
+library(plotly)
+plot_ly(df, x= ~ Date, y = ~Yield)
+```
+
+
+---
+
+### Multiple lines
+
+```{r, dpi = 100}
+df %>% select(Date,Yield,CPI) %>% gather(key,value,-Date) %>% 
+  plot_ly(x= ~ Date, y = ~value, symbol=~key)
+
+```
+
+
+
+---
+
+### `highcharter`
+
+```{r, dpi = 100, fig.height=3, out.height=3}
+library(highcharter)
+df %>% select(Date,Yield,CPI) %>% gather(key,value,-Date) %>% 
+  hchart("scatter", hcaes(x=Date,y=value, group= key))
+```
+
+---
+
+### Line-charts
+
+```{r}
+df %>% select(Date,Yield,CPI) %>% gather(key,value,-Date) %>% 
+  hchart("line", hcaes(x=Date,y=value, group= key))
+```
+
+---
+
+### `xts`
+
+Nogle pakker benytter `xts` formatet til til tidsserier
+
+```{r}
+df1 <- df %>% column_to_rownames(var = "Date") %>% select(Yield,CPI) %>%
+  as.xts()  
+```
+
+
+---
+
+### Kan styles til `stocks`
+
+```{r, dpi = 90}
+highchart(type = "stock") %>% 
+  hc_add_series_xts(df1[,1], id = colnames(df1)[1],name = colnames(df1)[1]) %>% 
+  hc_add_series_xts(df1[,2], id = colnames(df1)[2],name = colnames(df1)[2])
+```
+
+
+---
+
+
+### dygraphs
+
+```{r,dpi = 90}
+library(dygraphs)
+df %>% column_to_rownames(var = "Date") %>% 
+  select(Yield,CPI) %>%
+  as.xts() %>% 
+  dygraph()
+```
+
+---
+
+### Multiple plots
+
+```{r,eval=FALSE}
+df %>%
+  tidyr::gather(variable, value, -Date) %>%
+  transform(id = as.integer(factor(variable))) %>%
+  plot_ly(x = ~Date, y = ~value, color = ~variable, colors = "Dark2",
+          yaxis = ~paste0("y", id)) %>%
+  add_lines() %>% 
+  subplot(nrows = 5, shareX = TRUE)
+```
+
+---
+
+### Multiple plots
+
+```{r,eval=TRUE,echo=FALSE, dpi=90}
+df %>%
+  tidyr::gather(variable, value, -Date) %>%
+  transform(id = as.integer(factor(variable))) %>%
+  plot_ly(x = ~Date, y = ~value, color = ~variable, colors = "Dark2",
+          yaxis = ~paste0("y", id)) %>%
+  add_lines() %>% 
+  subplot(nrows = 5, shareX = TRUE)
+```
+
+---
+
+### Highcharter maps
+
+```{r,eval=FALSE}
+data(unemployment)
+
+map <- hcmap("countries/us/us-all-all", data = unemployment,
+             name = "Unemployment", value = "value", joinBy = c("hc-key", "code"),
+             borderColor = "transparent") 
+
+map %>%
+  hc_colorAxis(dataClasses = color_classes(c(seq(0, 10, by = 2), 50))) %>% 
+  hc_legend(layout = "vertical", align = "right",
+            floating = TRUE, valueDecimals = 0, valueSuffix = "%") 
+```
+---
+
+### Highcharter maps
+
+```{r,eval=T, echo=FALSE}
+data(unemployment)
+
+map <- hcmap("countries/us/us-all-all", data = unemployment,
+             name = "Unemployment", value = "value", joinBy = c("hc-key", "code"),
+             borderColor = "transparent") 
+
+map %>%
+  hc_colorAxis(dataClasses = color_classes(c(seq(0, 10, by = 2), 50))) %>% 
+  hc_legend(layout = "vertical", align = "right",
+            floating = TRUE, valueDecimals = 0, valueSuffix = "%") 
+```
+
+
+---
+
+### leaflet
+
+```{r, dpi = 90}
+library(leaflet)
+leaflet() %>%
+  addTiles() %>%  # Add default OpenStreetMap map tiles
+  addMarkers(lng=12.4111338, lat=55.8354388, popup="Beredskabsstyrelsen")
+```
+
+
+---
+
+
+class: inverse, middle
+
+# Mini opgave
+
+- Plot prisen på avocadoer over tid for de to stater
+- overvej håndtering af avocado typen i.e. "convetional" and "organic"
+- argumenterne `symbol` og `color` kan bruges
+
+```{r,eval=FALSE}
+library(readr)
+data <- read_csv("../data/avocado.csv") %>%
+  filter(region == "Boston" | region == "Albany")
+```
+
+---
+
+class: inverse, middle
+
+## Videre læsning
+
+- http://jkunst.com/highcharter/
+- https://r4ds.had.co.nz/data-visualisation.html
+- https://plot.ly/r/
+- https://rstudio.github.io/leaflet/

@@ -1,0 +1,386 @@
+---
+title: "Module 2   "
+subtitle: " </br> Importing data from flat-files"
+author: "Christian Bomholt"
+date: "2018/11/7"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+library(DT)
+library(dplyr)
+shower <- function(df){
+  datatable(df %>% head(5), options = list(dom='t'), rownames = F)
+}
+```
+
+
+---
+
+# Data Import
+
+- Indlæsning af standard fil-formater
+  - .xlsx
+  - .csv
+- Performance optimerede fil-formater
+
+
+### Motivation:
+
+Man kan spare meget tid ved at bruge en smule ekstra energi på indlæsningen af data, fremfor blindt at indlæse data og derefter bruge kræfter på rensning af data.
+
+---
+
+class: inverse, middle
+
+#  Indlæsning af standard fil-formater
+
+---
+
+# .xlsx filer
+
+Vi bruger pakken `readxl` til indlæsning af `.xlsx`. Pakken indeholder en række eksempler som kan benyttes til at teste funktionalitet med.
+
+```{r}
+library(readxl)
+readxl_example()
+```
+
+
+```{r,eval=FALSE}
+#system(paste("xdg-open",readxl_example("datasets.xlsx")))
+readxl_example("datasets.xlsx")
+```
+
+---
+
+Vi indlæser dataen med `read_excel()`
+
+```{r,eval=FALSE}
+read_excel(path, sheet = NULL, range = NULL, col_names = TRUE,
+  col_types = NULL, na = "", trim_ws = TRUE, skip = 0, n_max = Inf,
+  guess_max = min(1000, n_max))
+```
+
+```{r}
+xlsx_example <- readxl_example("datasets.xlsx")
+read_excel(xlsx_example) %>% shower()
+```
+
+
+---
+
+# Sheet specifikation
+
+Det er muligt at specificerer hvilket `sheet` man ønsker
+
+```{r}
+excel_sheets(xlsx_example)
+```
+
+```{r}
+read_excel(xlsx_example, sheet = "chickwts")  %>% shower()
+```
+
+---
+
+# Subsetting options
+
+Der er flere muligheder for at subsette data under import, dette er performance fremmende 
+
+```{r}
+read_excel(xlsx_example, n_max = 2)  %>% shower()
+```
+
+```{r}
+read_excel(xlsx_example, range = "C1:E3")  %>% shower()
+```
+
+---
+
+# Subsetting options
+
+```{r}
+read_excel(xlsx_example, range = cell_rows(1:2)) %>% shower
+```
+
+Yderligere kan man subsette med
+
+```{r,eval=FALSE}
+read_excel(xlsx_example, range = cell_cols("B:D"))
+read_excel(xlsx_example, range = "mtcars!B1:D5")
+```
+
+
+
+---
+
+# Na håndtering
+
+Det kan være vigtigt at have ens `NULL` værdier korrekt encoded, da mange pakker har intelligent håndtering af disse. Det kan gøres ved
+
+```{r}
+df <- read_excel(xlsx_example)
+df[df=="setosa"] <- NA
+```
+
+eller
+
+```{r}
+read_excel(xlsx_example, na = "setosa") %>% shower
+```
+
+---
+
+# Write to .xlsx
+
+Dette kan gøres med pakken `openxlsx`
+
+Her konstrueres en `list()` hvor hvert navn i listen bliver et `sheet` i den endelige excel fil.
+
+
+```{r,eval=FALSE}
+l <- list(iris = iris, mtcars = mtcars, chickwts = chickwts, quakes = quakes)
+openxlsx::write.xlsx(l, file = "inst/extdata/datasets.xlsx")
+```
+
+
+---
+
+class: inverse, middle
+  
+#  Lille opgave
+
+---
+
+## Opgave
+
+- Forsøg at anvende nogle af disse teknikker på filen `"../data/xl/haver.xlsx"` 
+- Bemærk det sære dato format samt `NA` værdierne. 
+
+```{r,eval=FALSE}
+read_excel("../data/xl/haver.xlsx") %>% shower
+```
+
+
+
+---
+
+class: inverse, middle
+
+#  CSV
+
+---
+
+Vi bruger pakken `readr` til indlæsning af `.csv` som indeholdder funktionen `read_csv()`. Man kan også bruge `base` funktionen `read.csv()`, men der er følgende grunde til at bruge `readr` istedet.
+
+### `readr`:
+- er typisk meget hurtigere  `(~10x)`  end `base`. Ved store filer får man en progress bar så man kan holde øje med fremskridt.
+
+- konverterer ikke `characters` til `factors`, samt har nogle fornuftige default indstillinger ifht. søjler og rækker.
+
+- er reproducérbar, `read.csv()` fra `base` er afhængig af miljøvariable og kører derfor ikke éns fra linux maskine til windows/mac maskine. 
+
+
+---
+## readr
+
+Pakken tager en `file-path` som første argument.
+
+```{r}
+library(readr)
+read_csv("../data/airports.csv") %>% shower
+```
+
+
+---
+
+#### `read_csv` funktionalitet
+
+Man kan bruge pakken `readr` til at kreere en `data.frame` fra en `string`
+
+```{r}
+read_csv("a,b,c
+1,2,3
+4,5,6") %>% shower
+```
+
+
+---
+
+#### `read_csv` funktionalitet
+
+
+Dette vil vi bruge til at demonstrere `read_csv`'s features. Du kan bruge `skip=n` til at skippe de første `n` linjer.
+
+```{r}
+read_csv("første linje med metadata
+  anden linje med metadata
+  x,y,z
+  1,2,3", skip = 2) %>% shower
+```
+
+Eller hvis din fil indeholder kommentarer, kan man supplere `comment = "#"` hvis kommentarerne er markeret memd `#`
+
+```{r}
+read_csv("# A comment I want to skip
+  x,y,z
+  1,2,3", comment = "#") %>% shower
+```
+
+---
+
+### `read_csv` funktionalitet: Søjle navne
+
+Vi kan sætte `col_names = FALSE` hvis vores fil ikke indeholder brugbare søjlenavne.
+
+```{r}
+read_csv("1,2,3\n4,5,6", col_names = FALSE) %>% shower
+```
+
+---
+
+### `read_csv` funktionalitet: Søjle navne
+
+Endvidere kan vi specificere søjlenavne `col_names=c("søjle1","søjle2")` 
+
+```{r}
+read_csv("1,2,3\n4,5,6", col_names = c("x", "y", "z")) %>% shower
+
+```
+
+---
+
+### `readr` funktionalitet
+
+Vi kan igen vælge at håndtere `NA` værdier allerede ved import, dette gøres ved `na = "#NA-representation"`.
+
+```{r}
+read_csv("a,b,c\n1,2,.", na = ".") %>% shower
+```
+
+---
+
+# Avanceret funktionalitet: data-skema
+
+`read_csv()` bruger som standard de første `1000` rækker til at gætte typen af data i hver søjle. Men nogle gange er det ikke nok som set i nedenstående eksempel.
+
+```{r, message=FALSE}
+read_csv(readr_example("challenge.csv"))[c(1:2,1999:2000),] 
+```
+
+---
+
+# Avanceret funktionalitet: data-skema
+
+
+Her er vi nød til at hjælpe `read_csv()` på vej ved at specificere `col_types`  
+
+```{r}
+read_csv(
+  readr_example("challenge.csv"), 
+  col_types = cols(
+    x = col_double(),
+    y = col_character()
+  )
+)[c(1:2,1999:2000),]  
+```
+
+---
+
+# Avanceret funktionalitet: data-skema
+
+
+Dette hjælper søjlen `x` men `y` kan også hælpes på vej ved at caste til dates:
+
+```{r}
+read_csv(
+  readr_example("challenge.csv"), 
+  col_types = cols(
+    x = col_double(),
+    y = col_date()
+  )
+)[c(1:2,1999:2000),] 
+```
+
+---
+
+class: inverse, middle
+
+#  Opgave
+
+---
+
+## Opgave
+
+- Forsøg at anvende nogle af disse teknikker på filen `"../data/exercise.csv"` 
+
+```{r,eval=FALSE}
+path <- "../data/exercise.csv"
+data <- read_csv(path)
+```
+
+- Bonus prøv 
+
+```{r}
+path <- "../data/exercise_2.csv"
+
+```
+
+
+---
+
+class: inverse, middle
+
+#  Performance optimerede fil-formater
+
+---
+
+## Performance optimerede fil-formater
+
+"Binary formats would be much faster than the csv format, because csv takes more space on disk, is row based, uncompressed and needs to be parsed into a computer-native format to have any meaning. So any serializer that’s working on csv has an enormous disadvantage as compared to binary formats."
+
+src: http://www.fstpackage.org/
+
+```{r}
+library(feather)
+library(data.table)
+library(fst)
+library(readr)
+```
+
+Vi forsøger at sammenligne de bedste options til performance I/O.
+
+---
+
+Syntaxen er dejlig ens for alle disse
+
+```{r,eval=FALSE}
+# fst
+fstwrite <- timer(write.fst(df, "dataset.fst"))
+fstread  <- timer(read.fst("dataset.fst"))
+
+#fread
+dtwrite <- timer(fwrite(df, "dataset.csv"))
+dtread  <- timer(fread("dataset.csv"))
+
+#base
+
+basewrite <- timer(write_rds(df, "dataset.rds"))
+baseread  <- timer(read_rds("dataset.rds"))
+
+#feather
+
+featherwrite <- timer(write_feather(df, "dataset.feather"))
+featherread  <- timer(read_feather("dataset.feather"))
+```
+
+### Go to demo

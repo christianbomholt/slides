@@ -1,0 +1,114 @@
+---
+title: "Introduction   "
+subtitle: " </br> Big data Microsoft R"
+author: "Christian Bomholt"
+date: "2018 november"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+
+---
+
+class: inverse, middle
+
+# Round the table
+
+### Experience with:
+
+- Big data
+- Programming in general
+- Machine learning
+- Statistics/ Math
+
+
+---
+
+## A little bit about me
+
+.pull-left[
+- Cand.scient.oecon from Aarhus University <img src="./libs/au.jpg" width="20"> 
+
+- Worked for/with different banks during studies <img src="./libs/jb.jpeg" width="20"> <img src="./libs/db.png" width="20"> <img src="./libs/sb.png" width="20">
+
+- Currently data scientist at Danske Bank <img src="./libs/db.png" width="20"> 
+
+- Occassionally write on my [blog](https://www.mljuice.com/)
+
+- Been using <img src="./libs/rstudio.png" width="20"> +5 years
+
+- Written packages - only proprietary though :(
+
+]
+
+.pull-right[
+
+
+<img src="./libs/crisp.jpeg" width="200">
+
+
+
+]
+
+---
+
+# Plan for kurset
+
+Dag1:
+
+- Installation af pakker, samt intro til meget anvendte pakker
+- Import af data fra flatfiles
+- Manipulation af data med tidyverse, hovedsageligt dplyr
+- State of the art data vizualization
+- Forbinde til SQL databaser
+
+Dag 2:
+
+- Construction af forecast modeller
+- Clustering
+- Træmodeller
+- Opgave løsning med konkret data
+
+
+
+---
+
+# Plan for the day
+
+
+```{r,include=FALSE}
+df <- rbind(
+ c("Installation af pakker", "0915" , "0945"),
+ c("Øvelse", "0945", "1000"),
+ c("Import af data", "1000","1045"),
+ c("Coffee Break", "1045", "1100"),
+ c("Øvelse","1100","1130"),
+ c("Lunch","1130","1215"),
+ c("Transformation af data","1215","1300"),
+ c("Øvelse","1315","1345"),
+ c("Visualization af data","1345","1445"),
+ c("Coffee break","1445","1500"),
+ c("SQL og databaser","1500","1545"),
+ c("Day 1 conclussion","1545","1600")
+)
+
+colnames(df) <- c("Activity", "Start", "End")
+
+df <- data.frame(df)
+```
+
+
+
+```{r, fig.width=12}
+library(rhandsontable)
+rhandsontable(df, width = 1000, rowHeaders= NULL) %>%
+  hot_cols(colWidths = c(400, 200, 200)) 
+```
+
+```{r, eval=FALSE,include=FALSE}
+DT::datatable(df, options = list(pageLength=7), rownames = F)
+```
+

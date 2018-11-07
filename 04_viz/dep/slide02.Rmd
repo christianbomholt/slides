@@ -1,0 +1,54 @@
+---
+title: "Module 1   "
+subtitle: " </br> Microsoft R client and server"
+author: "Christian Bomholt"
+date: "2018/3/12"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(warning=FALSE, message=FALSE, fig.height = 4, fig.width = 9,dpi=70)
+
+library(tidyverse)
+library(plotly)
+data <- readxl::read_excel("../data/xl/udrykningsaktivitet2.xlsx")
+```
+
+
+---
+
+# Indhold af modul
+
+- Deep dive i `plotly`
+  - barcharts
+  - density plots
+  - faceting
+  - heatmaps
+  - contour
+  - Animation
+
+---
+
+class: inverse, middle
+
+# Barcharts
+
+---
+
+```{r}
+data %>%
+  group_by(Hændelsestype) %>%
+  summarise(avg_time = mean(`Mandtimer i alt`)) %>% 
+  mutate(Hændelsestype = fct_reorder(Hændelsestype, avg_time)) %>%  
+  plot_ly(x = ~Hændelsestype, y = ~avg_time) %>% 
+  layout(margin = list(l = 50, r = 50, b = 150, t = 50, pad = 4))
+```
+
+

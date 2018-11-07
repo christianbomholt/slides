@@ -1,0 +1,119 @@
+---
+title: "Flight data"
+author: "christianbomholt"
+date: "September 24, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+
+# Airline Service Quality Performance 234 (On-Time performance data)
+
+This data has been reported by U.S. certificated air carriers so that information on the air carriers' quality of service can be made available to consumers of air transportation.
+
+Carriers within 1% or more of the total domestic scheduled service passenger revenues are required to report data for flights involving any airport in the 48 contiguous states accounting for 1% or more of the domestic scheduled service passenger enplanements. The regulation also provides for the voluntary reporting of a carrier's entire domestic system and voluntary reporting by other carriers. Some of the data elements included are departure, arrival, and elapsed flight times as shown by the Official Airline Guide; the carrier's computer reservation system and the carrier's actual performance; and selected differences among the three sources, such as delay and elapsed time difference.
+
+## Import data
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(DT)
+```
+
+
+```{r}
+flightCSV <- "../data/flight_data/2000.csv"
+
+flightDF <- read.csv(flightCSV,nrows = 1e5)[,-1]
+datatable(head(flightDF, 10), options = list('t'))
+```
+
+```{r}
+print(head(flightDF))
+```
+
+
+```{r}
+flightDF <- flightDF %>%
+  mutate(Date = as.Date(
+    paste0(
+      Year,"-",Month,"-",DayofMonth
+    )
+  )) 
+```
+
+
+## Vizualize general dynamics
+
+```{r}
+library(ggplot2)
+library(dplyr)
+ggplot(data = flightDF) +
+  geom_point(mapping = aes(x = Date, y = ArrDelay), alpha = 5/50) +
+  xlab("Date") +
+  ylab("Arrival Delay in minutes")
+```
+
+
+```{r}
+library(stringr)
+xtabs(~Origin+Month,flightDF %>% 
+filter(str_detect(Origin, "^ABE|^ABQ")) %>% droplevels())
+```
+
+## More advanced cross-tabbing
+
+
+
+## Linear models
+
+```{r}
+model <- lm(ArrDelay ~ as.numeric(Date),flightDF)
+summary(model)
+```
+```{r}
+library(broom)
+tidy(summary(model))
+```
+
+```{r}
+ggplot(flightDF,aes(Date,ArrDelay))+
+  geom_point(alpha = 5/50)+
+  geom_smooth(method='lm')
+```
+
+
+## Measuring runtime
+
+```{r}
+system.time(gaussianMean<-mean(rnorm(10000)))
+```
+
+```{r,eval=FALSE}
+ ?proc.time
+```
+
+
+>The first two entries are the total user and system CPU times of the current 
+R process and any child processes on which it has waited, and the
+third entry is the ‘real’ elapsed time since the process was started.
+
+>The definition of ‘user’ and ‘system’ times is from your OS.
+Typically it is something like _The ‘user time’ is the CPU time charged for the execution of user
+instructions of the calling process. The ‘system time’ is the CPU
+time charged for execution by the system on behalf of the calling process._
+
+## Read from SQL
+
+```{r}
+library(DBI)
+library(RSQLite)
+con <- dbConnect(SQLite(), dbname="../data/flight_data/airports.sqlite")
+dbReadTable(con, "airport") %>% head
+```
+
+

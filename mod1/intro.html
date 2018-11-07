@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Introduction</title>
+    <meta charset="utf-8">
+    <meta name="author" content="Christian Bomholt" />
+    <link href="libs/remark-css-0.0.1/default.css" rel="stylesheet" />
+    <link href="libs/remark-css-0.0.1/default-fonts.css" rel="stylesheet" />
+    <script src="libs/htmlwidgets-0.9/htmlwidgets.js"></script>
+    <link href="libs/handsontable-0.28.4/handsontable.full.min.css" rel="stylesheet" />
+    <script src="libs/handsontable-0.28.4/handsontable.full.min.js"></script>
+    <script src="libs/numbro.languages-1.9.2/languages.js"></script>
+    <script src="libs/chroma-1.1.0/chroma.min.js"></script>
+    <script src="libs/jquery-2.2.1/jquery.min.js"></script>
+    <script src="libs/sparkline-2.1.2/jquery.sparkline.min.js"></script>
+    <link href="libs/rhandsontable-0.3.4/rhandsontable.css" rel="stylesheet" />
+    <script src="libs/rhandsontable-binding-0.3.4/rhandsontable.js"></script>
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Introduction
+## </br> Big data Microsoft R
+### Christian Bomholt
+### 2018 november
+
+---
+
+
+class: inverse, middle
+
+# Round the table
+
+### Experience with:
+
+- Big data
+- Programming in general
+- Machine learning
+- Statistics/ Math
+
+
+---
+
+## A little bit about me
+
+.pull-left[
+- Cand.scient.oecon from Aarhus University &lt;img src="./libs/au.jpg" width="20"&gt; 
+
+- Worked for/with different banks during studies &lt;img src="./libs/jb.jpeg" width="20"&gt; &lt;img src="./libs/db.png" width="20"&gt; &lt;img src="./libs/sb.png" width="20"&gt;
+
+- Currently data scientist at Danske Bank &lt;img src="./libs/db.png" width="20"&gt; 
+
+- Occassionally write on my [blog](https://www.mljuice.com/)
+
+- Been using &lt;img src="./libs/rstudio.png" width="20"&gt; +5 years
+
+- Written packages - only proprietary though :(
+
+]
+
+.pull-right[
+
+
+&lt;img src="./libs/crisp.jpeg" width="200"&gt;
+
+
+
+]
+
+---
+
+# Plan for kurset
+
+Dag1:
+
+- Installation af pakker, samt intro til meget anvendte pakker
+- Import af data fra flatfiles
+- Manipulation af data med tidyverse, hovedsageligt dplyr
+- State of the art data vizualization
+- Forbinde til SQL databaser
+
+Dag 2:
+
+- Construction af forecast modeller
+- Clustering
+- Træmodeller
+- Opgave løsning med konkret data
+
+
+
+---
+
+# Plan for the day
+
+
+
+
+
+
+
+```r
+library(rhandsontable)
+rhandsontable(df, width = 1000, rowHeaders= NULL) %&gt;%
+  hot_cols(colWidths = c(400, 200, 200)) 
+```
+
+<div id="htmlwidget-fe075950dc6f701f3d80" style="width:1000px;height:504px;" class="rhandsontable html-widget"></div>
+<script type="application/json" data-for="htmlwidget-fe075950dc6f701f3d80">{"x":{"data":[{"Activity":"Installation af pakker","Start":"0915","End":"0945"},{"Activity":"Øvelse","Start":"0945","End":"1000"},{"Activity":"Import af data","Start":"1000","End":"1045"},{"Activity":"Coffee Break","Start":"1045","End":"1100"},{"Activity":"Øvelse","Start":"1100","End":"1130"},{"Activity":"Lunch","Start":"1130","End":"1215"},{"Activity":"Transformation af data","Start":"1215","End":"1300"},{"Activity":"Øvelse","Start":"1315","End":"1345"},{"Activity":"Visualization af data","Start":"1345","End":"1445"},{"Activity":"Coffee break","Start":"1445","End":"1500"},{"Activity":"SQL og databaser","Start":"1500","End":"1545"},{"Activity":"Day 1 conclussion","Start":"1545","End":"1600"}],"rClass":"data.frame","rColClasses":{"Activity":"factor","Start":"factor","End":"factor"},"rColnames":["Activity","Start","End"],"rColHeaders":["Activity","Start","End"],"rRowHeaders":["1","2","3","4","5","6","7","8","9","10","11","12"],"rDataDim":[12,3],"selectCallback":false,"colHeaders":["Activity","Start","End"],"rowHeaders":null,"columns":[{"type":"dropdown","source":["Coffee break","Coffee Break","Day 1 conclussion","Import af data","Installation af pakker","Lunch","Øvelse","SQL og databaser","Transformation af data","Visualization af data"],"allowInvalid":false,"renderer":"customRenderer","default":null},{"type":"dropdown","source":["0915","0945","1000","1045","1100","1130","1215","1315","1345","1445","1500","1545"],"allowInvalid":false,"renderer":"customRenderer","default":null},{"type":"dropdown","source":["0945","1000","1045","1100","1130","1215","1300","1345","1445","1500","1545","1600"],"allowInvalid":false,"renderer":"customRenderer","default":null}],"width":1000,"height":null,"debug":0,"stretchH":"none","comments":false,"contextMenu":{"items":{"row_above":[],"row_below":[],"remove_row":[],"hsep3":{"name":"---------"},"undo":[],"redo":[],"hsep4":{"name":"---------"},"alignment":[]}},"colWidths":[400,200,200]},"evals":["columns.0.renderer","columns.1.renderer","columns.2.renderer"],"jsHooks":[]}</script>
+    </textarea>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function() {
+  var d = document, s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})();</script>
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  tex2jax: {
+    skipTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+  }
+});
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://cdn.bootcss.com/mathjax/2.7.1/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
