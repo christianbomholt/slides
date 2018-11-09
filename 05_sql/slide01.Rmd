@@ -1,0 +1,224 @@
+---
+title: "Module 5  "
+subtitle: " </br> databaser og SQL med R"
+author: "Christian Bomholt"
+date: "2018/11/4"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+
+```
+
+
+---
+
+# Indhold af modul
+
+-  SQL og databaser med R 
+  - Oprettelse af lokal database
+- `dplyr` med `RDBMS`
+
+
+---
+
+class: inverse, middle
+
+# SQL
+
+---
+
+# SQL
+
+*S*tructured *Q*uery *L*anguage er *lingua franca* når der skal kommunikeres med databaser. I `R` facilliteres det med pakken `DBI` som kreerer en fin front-end som andre backend rettede pakker kobles op på e.g. `(SQLite, MySQL, PostgreSQL, MonetDB, etc.)`   
+
+- Vi skal bruge simpleste backend løsning nemlig `SQLite`, dette gøres med pakken `RSQLite`
+
+```{r, eval=FALSE}
+install.packages('DBI')
+install.packages('RSQlite')
+```
+
+---
+
+### Indlæs tables med `DBI`
+
+Dette gøres med `dbReadTable(connection, table)`, hvor `connection` er en forbindelse til en database, og `table` er navnet på en tabel i databasen.
+
+- Vi kan connecte til eksempel databasen i pakken `RSQLite`:
+
+```{r}
+library(DBI)
+library(RSQLite)
+db <- RSQLite::datasetsDb()
+dbReadTable(db, "mtcars", row.names = T)[1:3,1:3]
+dbDisconnect(db)
+```
+
+---
+
+### Eksempel på SQL statement
+
+Pakken `DBI` har konstrueret et makkerpar bestående af `dbSendQuery()` som sender en forespørgsel til en connection og `dbFetch()` som henter resultatet: 
+
+```{r}
+con <- RSQLite::datasetsDb()
+res <- dbSendQuery(con, "SELECT * FROM mtcars WHERE cyl = 4")
+dbFetch(res)[1:3,]
+dbClearResult(res)
+dbDisconnect(con)
+```
+
+---
+
+class: inverse, middle
+
+# Opret lokal database
+
+---
+
+### Lokal database
+
+Man kan oprette en `SQLite` database ved at give en ikke eksisterende `.sqlite` til `dbConnect()`. Herefter kan skrives tabeller til den nyligt oprettede database.  
+
+
+```{r,eval=TRUE}
+airports <- read.csv("../data/airports.csv")
+
+con <- dbConnect(SQLite(), dbname="../data/airports.sqlite")
+dbWriteTable(con, "airport", airports, overwrite=T)
+dbReadTable(con, "airport")[1:3,1:3]
+dbDisconnect(con)
+```
+
+###### Note :  `copy_to` er en identisk wrapper til `dbWriteTable` som måske er lettere at huske
+
+---
+
+### Undersøg database
+
+Uden interface som `MSSQL` kan det være svært at eksaminere en given database. Til dette formål findes funktioner som `dbListTables` og `dbListFields`. Som hhv. lister tabeller i en database og deres søjler.
+
+```{r}
+con <- dbConnect(SQLite(), dbname="../data/airports.sqlite")
+dbListTables(con)
+dbListFields(con, "flights")
+dbDisconnect(con)
+```
+
+
+---
+
+class: inverse, middle
+
+# `dplyr`s interaction med databaser 
+
+---
+
+
+
+### Lav manipulationer med `dplyr` på tabeller i DB
+
+Hvis man er mere tryk ved `dplyr` end `SQL` kan man bruge de kendte funktioner fra dplyr direkte på forbindelsen til databasen med `tbl()` funktionen.
+
+```{r}
+library(dplyr)
+con <- dbConnect(SQLite(), dbname="../data/airports.sqlite")
+
+tbl(con, "flights") %>%
+  group_by(origin) %>%
+  tally() %>%
+  collect()
+```
+
+---
+
+### Bag tæppet på `dplyr` og `DBI`
+
+`dplyr` funktions kald omsættes til `SQL` når man interegerer med en `DBI` forbindelse. Det kan ses ved 
+
+```{r,message=TRUE}
+tailnum_delay_db <- tbl(con, "flights") %>% 
+  group_by(tailnum) %>%
+  summarise(
+    delay = mean(arr_delay),
+    n = n()
+  ) %>% 
+  arrange(desc(delay)) %>%
+  filter(n > 100)
+
+tailnum_delay_db %>% show_query()
+```
+
+---
+
+### En teknisk detalje
+
+`dplyr` funktionskald til en `DBI` forbindelse benytter det man kalder `lazy-evaluation`, det vil sige at ingen beregminger udføres før en funktion kaldes der har behov for udregningens resultat, disse kaldes `eager actions`. Et eksempel herpå er `collect` eller `dbWriteTable`/`copy_to`
+
+```{r}
+df <- tbl(con, "flights") %>% 
+  group_by(tailnum) %>%
+  summarise(
+    delay = mean(arr_delay),
+    n = n()
+  ) %>% 
+  arrange(desc(delay)) %>%
+  filter(n > 100)
+
+df$n
+df<- df %>% collect()
+df$n[1:3]
+```
+
+
+---
+
+class: inverse, middle
+
+# Plotting med `DBI` forbindelse 
+
+---
+
+### plot kan laves med `dbplot` eller `ggplot2`
+
+```{r, fig.height=4,fig.width=10, dpi=400}
+library(ggplot2)
+tbl(con, "avocados") %>% 
+  filter(type=="conventional") %>% collect() %>% 
+  mutate(Date=as.Date(Date, origin = "1970-01-01")) %>% 
+  ggplot(mapping = aes(x = Date, y = AveragePrice)) +
+  geom_point(alpha = 5/50) +
+  geom_smooth(color = "red") + xlab("Date") +
+  ylab("Average price (of a single avocado)")
+```
+
+
+---
+
+class: inverse, middle
+
+# Opgave
+
+  - Kreér en lokal database
+  - indsæt datasættet `ggplot2::diamonds`
+  - Konstruér en  `SQL query` som giver alle diamanter med clarity `VVS2` og color `E`
+  - Prøv at udregn gennemsnitsprisen pr klarhed med `dplyr` samt pris/carat
+  - Sortér begge resultater fra størst til mindst
+
+---
+
+class: inverse, middle
+
+# Videre læsning
+
+- https://db.rstudio.com/getting-started/
+

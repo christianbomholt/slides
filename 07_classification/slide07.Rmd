@@ -1,0 +1,132 @@
+---
+title: "Module 7   "
+subtitle: " </br> Creating and Evaluating Partitioning Models"
+author: "Christian Bomholt"
+date: "2018/3/12"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+
+# Module Overview
+
+- Creating partitioning models based on decision trees
+- Evaluating models
+- Using the MicrosoftML package
+
+???
+
+This introduction includes additional, optional slides that you can use if students are unfamiliar with the concepts of partitioning models.
+
+
+---
+
+# Partitioning models
+
+- Falder under kategorien `Supervised learning`
+- Kan indeles i
+  - Klassifikations træer : response variabel er en factor
+  - Regression træer: response variabel er kontinuer
+- Rekursiv af natur:
+  - Hele data sættet starter i én knude / node
+  - Et split vælges som bedst seperer klasserne
+  - Knuderne undersøges om de skal splittes igen
+  - Hvis ingen knuder skal splittes afslutter algoritmen
+
+
+http://www.r2d3.us/visual-intro-to-machine-learning-part-1/
+
+
+---
+
+# Fordele ved træ modeller
+
+- Let tolkelige
+- Kræver ikke antagelsen om statistisk normalitet eller linearitet
+- Variable kan bruges mange gange i forskellige dele af træet
+- Robust overfor outliers
+
+---
+
+# Ulemper ved træ modeller
+
+- Man skal være påpasselig med træstørrelsen:
+  - Små træer: lav predictive power
+  - Store træer: har det med at overfitte
+- Kan være tunge på store data-sæt
+
+---
+
+# Konstruktion af klassifications træ
+
+Biblioteket `rpart` (Recursive PARTitioning) tilader os at lave et klassifikations træ ganske let
+
+```{r}
+library(rpart)
+tree_model <- rpart(Species~., data=iris)
+tree_model
+```
+
+
+---
+
+# Konstruktion af regressions træ
+
+Samme kald, nu er det blot en numerisk søjle som anvendes som `target`
+
+```{r}
+res <- rpart(Petal.Length~., data=iris , control = rpart.control(cp = 0.15))
+```
+
+parameteren `rpart.control(cp = 0.15)` kontrollerer kompleksitet af træet.
+
+```{r,eval=FALSE}
+rpart.control(minsplit = 20, minbucket = round(minsplit/3), cp = 0.01, 
+              maxcompete = 4, maxsurrogate = 5, usesurrogate = 2, xval = 10,
+              surrogatestyle = 0, maxdepth = 30, ...)
+```
+
+
+---
+
+# Plot af beslutningstræer
+
+Vi benytter pakken `visNetwork` som er en af de mere visuelt behagelige pakker
+
+```{r}
+library(visNetwork)
+res <- rpart(Petal.Length~., data=iris)
+visTree(res, edgesFontSize = 14, nodesFontSize = 16, width = "100%")
+```
+
+
+---
+
+class: inverse, middle
+
+# Opgave
+
+- Fit et beslutningstræ til diamonds datasættet
+
+```{r,eval=FALSE}
+df <- ggplot2::diamonds %>%
+  mutate(value = if_else(price >= 4000,  "high", "low")) %>%
+  mutate(id = row_number())
+#Create training set
+train <- df %>% sample_frac(.70)
+#Create test set
+test  <- anti_join(df, train, by = 'id')
+```
+
+Evaluér træet med
+```{r,eval=FALSE}
+pred <- predict(tree_model,test, type = 'class')
+mean(pred==test$value)
+```
+
+

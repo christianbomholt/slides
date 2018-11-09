@@ -1,0 +1,488 @@
+---
+title: "Module 6   "
+subtitle: " </br> Creating and Evaluating Regression Models"
+author: "Christian Bomholt"
+date: "2018/3/12"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+```{r, include=FALSE,echo=FALSE,message=FALSE,warning=FALSE}
+suppressPackageStartupMessages(library(readxl))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(plotly))
+suppressPackageStartupMessages(library(pacman))
+suppressPackageStartupMessages(library(readxl))
+df <- read_excel('../data/xl/R.xlsx',col_names = T)
+df$Date <- as.Date(df$Date,origin = '1970-01-01')
+
+```
+
+---
+class: inverse, middle
+
+
+## Data
+
+Vores target variabel er den hungarske 10 årige rente i perioden 30. januar 2010 til 31. marts 2017. Som forklarende variable har vi et sammensurium af makroøkonomiske, e.g. CPI, Current account, trade balance etc. samt variable afledt fra det finansielle marked e.g. FX volatilitet, CDS og forward renter.
+
+
+--- 
+
+---
+
+
+## Data
+
+```{r}
+DT::datatable(df %>% subset(select=c(Date,Yield,CDS,CA,Forwards,NDF)) 
+              %>% head(6), options = list(dom='t'),rownames = F)
+```
+
+---
+
+## Data
+
+```{r,eval=TRUE,echo=FALSE,fig.width=11, fig.height=5.5}
+library(plotly)
+p <- df %>%
+  tidyr::gather(variable, value, -Date) %>%
+  transform(id = as.integer(factor(variable))) %>%
+  plot_ly(x = ~Date, y = ~value, color = ~variable, colors = "Dark2",
+          yaxis = ~paste0("y", id)) %>%
+  add_lines() %>% 
+  subplot(nrows = 5, shareX = TRUE)
+p
+```
+
+---
+
+## Transformation med `dplyr`
+
+Ønskes lags eller lignende kreeres det led ved brug af `dplyr`
+
+```{r}
+library(dplyr)
+df <- df %>% 
+mutate(lag1=lag(Yield),
+       lag2=lag(Yield,2),
+       movave=(lag1+lag2)/2)
+```
+
+```{r,echo=FALSE}
+df[is.na(df)] <- 7
+```
+
+
+---
+
+## Linær regression af tidsserie
+
+Simpel regression foretages med linear models `lm()` fra `stats`, denne udregner blot
+
+$$
+\hat{\beta} = (X^TX)^{-1}X^T y \\
+$$
+samt omkringværende stats. Syntaxen `Yield~.` betyder at Yield ønskes forklaret ved brug af alle variable  
+
+```{r}
+fit <- lm(Yield~.,data = df)
+```
+
+---
+
+## Linær regression
+
+Hvis kun et udsnit ønskes brugt skrives eksempelvis
+
+```{r}
+fit <- lm(Yield~CDS+M2+CPI,data = df)
+```
+
+betydende 
+
+$$
+  \text{yield}_t = \alpha + \beta_1 \text{CDS}_t + \beta_2\text{M2}_t + \beta_3 \text{CPI}_t 
+$$
+
+```{r}
+fit$coefficients
+```
+
+---
+
+## Print af statistics
+
+Pakken `broom` gør dette meget mere behageligt end `base` løsningen `summary(fit)`
+
+```{r}
+broom::tidy(fit)
+```
+
+---
+
+class: inverse, middle
+
+
+## Opgave
+
+- Fit en model for avocado pris-sættet
+- Modellen skal lade AveragePrice som funktion af Total volume
+- Undersøg koefficienter
+- Plot evt. regressions-linjen
+
+$$
+  \text{AveragePrice} = \alpha + \beta \cdot \text{Total Volume} + \varepsilon, \quad \varepsilon \sim N(0,1)  
+$$
+
+```{r,eval=FALSE}
+library(readr)
+avocados <- read_csv("../data/avocado.csv") %>% filter(region=="Albany") %>% 
+  filter(type=="conventional")
+```
+
+
+---
+
+
+## Høj fleksibilitet i standard lineær regression
+
+Dette muliggør præcist fit, men dette er ikke nødvendigvis ønskværdigt
+
+```{r,echo=FALSE,warning=FALSE}
+fit <- lm(Yield~., data = df %>% subset(select=-c(Date)))
+dt <- cbind.data.frame(df %>% select(Date,Yield),data.frame(fittedValues=predict(fit,newdata = df)))
+```
+
+
+```{r,fig.width=11, fig.height=4}
+plot_ly(dt %>% reshape2::melt(id='Date'), x= ~Date, y= ~value,
+        type='scatter',mode='lines', linetype = ~variable)
+```
+
+---
+
+## Regularized regression
+
+Problemet i ovenstående regression kan være at koefficienterne når uhensigtsmæssigt høje værdier grundet multi kolinaritet. Dette kan føre til et fit som genneraliserer dårligt out-of sample.  En måde at modvirke dette er at begrænse flekskibiliteten for en lineær regression ved eksempel vis en $ \mathcal{L}_1 $ straf som i LASSO (Least Absolute Shrinkage and Selection Operator) 
+
+$$ 
+  \hat{\beta} = \min_\beta (y-X\beta)^T (y-X\beta) + \lambda\sum_j |\beta_j|, \quad \lambda\geq 0
+$$
+---
+
+## LASSO
+
+Pakken `glmnet` kan håndterer regulariseret regression, skrevet af blandt andre Trevor Hastie
+
+```{r,message=FALSE}
+library(glmnet)
+X = df %>% subset(.,select=-c(Date,Yield)) %>% as.matrix()
+y = df$Yield
+
+fit     <- glmnet(X,y,
+                  family="gaussian")
+fit.values <- predict(fit,X)[,]
+```
+
+---
+
+## Illustration af flexibility
+
+```{r, echo=FALSE,fig.width=11, fig.height=5}
+d <- fit.values
+colnames(d) <- substr(colnames(d),2,3) %>% as.numeric()
+dt <- data.frame(Date=df$Date, d)
+dmelt <- reshape2::melt(dt,id='Date') %>%  transform(flexibility = as.numeric(factor(variable)))
+
+plot_ly(dmelt, x=~Date, y=~value, type='scatter', mode='markers',  color=~flexibility) %>%
+  layout(
+    xaxis = list(range = c(dt$Date %>%min , dt$Date %>%max))
+    )
+```
+
+---
+
+## Forskellen på de to regressions former ses ved prediction out of sample
+
+```{r, echo=FALSE,warning=FALSE,fig.width=10, fig.height=3.7}
+fit <- lm(Yield~., data = df %>% subset(Date<=as.Date('2013-01-01')) %>% subset(select=-c(Date)))
+
+pred <- predict(fit,newdata = df %>% subset(select=-c(Date)))
+dt <- cbind.data.frame(df %>% select(Date,Yield),data.frame(pred=pred))
+
+plot_ly(dt %>% reshape2::melt(id='Date'), x= ~Date, y= ~value,
+        type='scatter',mode='lines', linetype = ~variable) %>% layout(
+  shapes = list(
+    list(type = "rect",
+         fillcolor = "green", line = list(color = "green"), opacity = 0.3,
+         x0 = "2013-01-01", x1 = "2010-01-30", xref = "x",
+         y0 = min(df$Yield), y1 = 10)))
+```
+
+Hvis vi lader modellen fittes til observationer før 2013-01-01, og predikterer på baggrund af observerede værdier sidenhen ses svagheden
+
+---
+
+## Gøres det samme med `glmnet`
+
+Ses en bedre out of sample performance
+
+```{r,echo=FALSE,warning=FALSE,fig.width=10, fig.height=5}
+db <- df %>% subset(Date<=as.Date('2013-01-01'))
+X = db %>% subset(.,select=-c(Date,Yield)) %>% as.matrix()
+X[is.na(X)] <- 7
+y = db$Yield
+
+fit     <- glmnet(X,y,
+                  family="gaussian")
+X = df %>% subset(.,select=-c(Date,Yield)) %>% as.matrix()
+X[is.na(X)] <- 7
+y = df$Yield
+
+pred.values <- predict(fit,X)[,40]
+
+
+dt <- cbind.data.frame(df %>% select(Date,Yield),data.frame(OLS=pred), data.frame(LASSO = pred.values))
+
+plot_ly(dt %>% reshape2::melt(id='Date'), x= ~Date, y= ~value,
+        type='scatter',mode='lines', linetype = ~variable) %>% layout(
+  shapes = list(
+    list(type = "rect",
+         fillcolor = "green", line = list(color = "green"), opacity = 0.3,
+         x0 = "2013-01-01", x1 = "2010-01-30", xref = "x",
+         y0 = min(df$Yield), y1 = 10)))
+```
+
+---
+
+## Flexibilitet skal bestemmes
+
+LASSO metodikken medfører at $\lambda$ bliver et hyper-parameter som kan sættes optimalt med forskellige metoder
+
+```{r, echo=FALSE,warning=FALSE,fig.width=10, fig.height=4}
+pred.values <- predict(fit,X)[,30:50]
+
+
+dt <- cbind.data.frame(df %>% select(Date,Yield),data.frame(OLS=pred), data.frame(LASSO = pred.values))
+
+plot_ly(dt %>% reshape2::melt(id='Date'), x= ~Date, y= ~value,
+        type='scatter',mode='lines', linetype = ~variable) %>% layout(
+  shapes = list(
+    list(type = "rect",
+         fillcolor = "green", line = list(color = "green"), opacity = 0.3,
+         x0 = "2013-01-01", x1 = "2010-01-30", xref = "x",
+         y0 = min(df$Yield), y1 = 10)),showlegend=FALSE)
+```
+
+---
+
+## Mål for error
+
+Forskellige mål for error kan anvendes vi vil kigge på MSE [Mean Square Error] og MAE [Mean Absolute Error], defineret som
+
+$$
+L_1 \;   [\text{MAE}] : \frac{1}{T}\sum_t^T |f(x_t)-y_t| \\
+L_2 \;   [\text{MSE}] : \frac{1}{T}\sum_t^T (f(x_t)-y_t)² \\
+$$
+Man kan vise at der gælder
+
+<!-- $$ -->
+<!--   L_1 \; : f(x) = \text{median}[Y|X=x] \iff f(x) = \arg\min_c E[|Y-c||X=x] \\ -->
+<!--   L_2 \; : f(x) = E[Y|X=x] \iff f(x) = \arg\min_c E[(Y-c)²|X=x]  -->
+<!-- $$ -->
+---
+
+## Implementation i `R`
+
+```{r,echo=FALSE}
+pred.values <- predict(fit,X)[,40] #E_{Y|X} E_{Y|X}
+
+```
+
+
+```{r,echo=FALSE}
+OLS <- pred[37:87]
+LASSO <- pred.values[37:87]
+Yield <- y[37:87]
+```
+
+
+```{r}
+mse <- function(fx,y){
+  sum((fx-y)**2)
+}
+mae <- function(fx,y){
+  sum(abs(fx-y))
+}
+data.frame(MSE=c(mse(Yield,OLS),
+                 mse(Yield,LASSO)),
+           MAE=c(mae(Yield,OLS),
+                 mae(Yield,LASSO)), row.names = c('OLS','LASSO'))
+```
+
+---
+
+## Andre modellerings metoder
+
+AR model, vi prøver en AR 4
+
+```{r}
+fitAR <- ar(df %>% subset(Date<=as.Date('2013-01-01')) %>%  select(Yield) %>%
+              unlist %>% as.numeric, F, 4)
+
+predAR <- function(y,fit){ # Høker predictions metode
+  return(
+  (y %>% mutate(l1=lag(Yield),
+                        l2=lag(Yield,n=2),
+                        l3=lag(Yield,n=3),
+                        l4=lag(Yield,n=4)) %>% select(-c(Yield)) %>% as.matrix()) %>% 
+    apply(.,1,predict,object=fit) %>% unlist() %>% as.data.frame() %>% subset(.>0.9)
+  )
+}
+
+predar <- predAR(df %>%  select(Yield),fitAR) %>% unlist() %>% as.numeric()  
+```
+
+---
+
+## AR(4)
+
+```{r,echo=FALSE,fig.width=11, fig.height=5}
+dt <- cbind.data.frame(df %>% select(Date,Yield),data.frame(OLS=pred), data.frame(LASSO = pred.values),
+                       data.frame(AR = c(df$Yield[1:4],predar)))
+
+plot_ly(dt %>% reshape2::melt(id='Date'), x= ~Date, y= ~value,
+        type='scatter',mode='lines', linetype = ~variable) %>% layout(
+  shapes = list(
+    list(type = "rect",
+         fillcolor = "green", line = list(color = "green"), opacity = 0.3,
+         x0 = "2013-01-01", x1 = "2010-01-30", xref = "x",
+         y0 = min(df$Yield), y1 = 10)))
+```
+
+<!-- --- -->
+
+<!-- ## Moving window/Expanding -->
+
+<!-- Mere fornuftigt er det at opdatere modellen så ofte som data tillader således at -->
+
+<!-- $$ -->
+<!--   \hat{y}_t=f_t(x) = E[Y|\mathcal{F}_t] = E[Y|X_{t-1}=x_{t-1},...,X_1=x_1]  -->
+<!-- $$ -->
+<!-- Ved strukturelle skred kan et rolling window være mere fornuftigt så -->
+
+<!-- $$ -->
+<!--   \hat{y}_t=f_t(x) = E[Y|\mathcal{F}_t^{\tau}] = E[Y|X_{t-1}=x_{t-1},...,X_{t-\tau}=x_{t-\tau}]  -->
+<!-- $$ -->
+
+<!-- Strengt taget kigger vi på  -->
+<!-- $$ -->
+<!--   E[Y|(X_{t},Y_{t-1})=(x_{t},=y_{t-1}),...,(X_{2},Y_{1})=(x_{2},=y_{1}), X_1=x_1]  -->
+<!-- $$ -->
+
+---
+
+## Expanding window
+
+Vi anvender her et expanding window
+
+```{r,message=FALSE}
+library(lubridate)
+numberofpredictions <- df%>% subset(Date>as.Date('2013-01-01')) %>% nrow()
+predictions <- vector("numeric",length = numberofpredictions)
+for(j in 1:numberofpredictions){
+  enddate <- as.Date('2013-01-01')
+  preddate <- enddate
+  month(enddate) <- month(enddate) +j-1
+  month(preddate) <- month(preddate) +j
+  
+  fit <- lm(Yield~CDS+CPI+CA+Treasury,
+            data= df %>%subset(Date<=enddate) %>%
+              subset(select=-c(Date)))
+  
+  predictions[j]<-predict(fit,
+          newdata = df %>% subset(Date>enddate&Date<=preddate) %>%
+            subset(select=-c(Date))) %>% as.numeric()
+}
+```
+
+---
+
+## Expanding window
+
+Her opnås straks bedre fit, alene med `Yield~CDS+CPI+CA+Treasury`
+
+```{r, echo=FALSE,fig.width=11, fig.height=5}
+dt <- cbind.data.frame(df %>%
+                         select(Date,Yield),
+                       data.frame(RollOLS=c(df$Yield[1:36],predictions)),
+                       data.frame(OLS=pred), data.frame(LASSO = pred.values))
+
+plot_ly(dt %>% reshape2::melt(id='Date'), x= ~Date, y= ~value,
+        type='scatter',mode='lines', linetype = ~variable) %>% layout(
+          shapes = list(
+            list(type = "rect",
+                 fillcolor = "green", line = list(color = "green"), opacity = 0.3,
+                 x0 = "2013-01-01", x1 = "2010-01-30", xref = "x",
+                 y0 = min(df$Yield), y1 = 10)))
+```
+
+---
+
+## Sammenligning
+
+```{r,echo=FALSE}
+RollingOLS <- predictions
+AR <- data.frame(AR = c(df$Yield[1:4],predar))$AR[37:87]
+```
+
+
+```{r}
+data.frame(MSE=c(mse(Yield,OLS),
+                 mse(Yield,LASSO),mse(Yield,AR),
+                 mse(Yield,RollingOLS)),
+           MAE=c(mae(Yield,OLS),
+                 mae(Yield,LASSO),
+                 mae(Yield,AR),
+                 mae(Yield,RollingOLS)),
+           row.names = c('OLS','LASSO','AR','RollingOLS'))
+```
+
+---
+
+class: inverse, middle
+
+
+## Opgave
+
+Anvend en af tidligere beskrevne metodiker til at opnå lavest MSE og MAE på out of sample forecasts i perioden 2013-01-01 til 2017-03-30. 
+
+```{r, echo=FALSE,fig.height=3,fig.width=10}
+plot_ly(df, x= ~Date, y= ~Yield,
+        type='scatter',mode='lines') %>% layout(
+          shapes = list(
+            list(type = "rect",
+                 fillcolor = "green", line = list(color = "green"), opacity = 0.3,
+                 x0 = "2013-01-01", x1 = "2010-01-30", xref = "x",
+                 y0 = min(df$Yield), y1 = 10)))
+```
+
+Dette kan gøres på flere måder, e.g. subset af variable, kombination af metoder, kreering af lags, optimering af $\lambda$ i LASSO etc.. Alt er tilladt bortset fra at anvende $y_t$ i prediktionen af $y_t$. 
+
+```{r,eval=FALSE}
+df <- read_excel('../data/xl/R.xlsx',col_names = T)
+df$Date <- as.Date(df$Date,origin = '1970-01-01')
+```
+
+

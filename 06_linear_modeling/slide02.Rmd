@@ -1,0 +1,150 @@
+---
+title: "Module 7   "
+subtitle: " </br> Clustering"
+author: "Christian Bomholt"
+date: "2018/11/7"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+```
+
+
+---
+
+# Indhold af modul
+
+- Kmeans clustering
+- Evaluering af clusters
+- demo
+
+---
+class: inverse, middle
+
+#  Clustering 
+
+---
+
+- Clustering falder under den teoretiske gruppering `unsupervised learning`:
+  - Ingen labels til data
+  - Forsøger at splitte data ind i naturlige grupper
+  - "Intet" mål for præcision
+
+```{r,echo=FALSE,dpi=70}
+library(plotly)
+require("datasets")
+data("iris")
+plot_ly(data = iris, x = ~Sepal.Length, y = ~Petal.Length, symbol = ~Species, size=~Sepal.Width)
+```
+
+
+---
+
+#### Hvorfor lave clustering?:
+
+- Exploratory data analyse
+- Udnyt naturlige grupperinger i data
+- Reducér data til grupper af ens observationer
+- Dimension reduktion
+- Preprocessing af data inden brug af supervised learning
+
+```{r,echo=FALSE, fig.height=6}
+pwi=read.csv("../data/brain/pwi.csv", header=FALSE)
+pwi = as.matrix(pwi)
+dwi=read.csv("../data/brain/dwi.csv", header=FALSE)
+dwi = as.matrix(dwi)
+par(mfrow=c(1,2))
+image(pwi,col=gray(seq(0,1,length=100)))
+image(dwi,col=gray(seq(0,1,length=100)))
+```
+
+---
+
+# K-means clustering
+
+- K-means clustering kaldes sjældent også partitioning clustering
+- Deler "n" observationer, beskrevet med "p" forklarende variable i et mindre antal "k" grupper. 
+- You must specify k, the number of classes
+
+
+---
+
+# Performing k-means clustering
+
+Tager data e.g. blomster mål som første argument og antal clusters som andet argument.
+
+```{r, eval = FALSE}
+clust <- kmeans(X, k)
+```
+
+- Sæt k til et passende antal clusters  
+
+---
+
+# Evaluating clusters
+
+- Der er intet egentligt mål af præcision da der ikke er et label at holde grupperingen op mod
+- Man kan få en idé om variationen forklaret af grupperingen ved at se på "between cluster sums of squares" og "total sums of squares":
+
+```{r, eval=FALSE}
+cclusteringulst$betweenss / cclustering$totss
+```
+
+
+- Dette returnerer proportionen af variation forklaret
+
+---
+
+# Standardizing data
+
+- Clustering anvender distance metrics til at bestemme cluster tilhørsforhold.
+- Variende skala variable i mellem kan gøre at en få variable dominerer clusteringen.
+- Man anvender typisk "z"-transformation hvorved middelværdi på 0 og standard afvigelse på 1 opnås.
+
+
+---
+
+# Optimizing k-means clustering
+
+- Det kan være svært at bestemme den optimale værdi for `k`
+- En approach er at køre algoritmen for flere værdier af k og sammenligne før nævnte ratio.
+
+- For store datamængder kan algoritmen med fordel køres på et subset, og optimale værdier gives til algoritmen som startværdier for det fulde sæt.
+
+
+---
+class: inverse, middle
+
+#  Demo 
+
+
+---
+class: inverse, middle
+
+#  Opgave
+
+- Brug kmeans på følgende data `Y` og fast sæt et antal clusters `k` 
+
+```{r}
+library(readr)
+pwi=read_csv("../data/brain/pwi.csv",col_names = FALSE)
+pwi = as.matrix(pwi)
+dwi=read_csv("../data/brain/dwi.csv", col_names=FALSE)
+dwi = as.matrix(dwi)
+mask=read_csv("../data/brain/mask.csv", col_names=FALSE)
+mask = as.matrix(mask)
+N = sum(mask==1)
+Y = matrix(0, nrow=N, ncol=2)
+Y[,1] = pwi[mask==1]
+Y[,2] = dwi[mask==1]
+```
+
+

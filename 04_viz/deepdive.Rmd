@@ -60,7 +60,7 @@ d2<- data %>% filter(`Hændelsesplacering hovedgruppe`!="Bygning")%>% select(Dø
 plot_ly(alpha = 0.6) %>%
   add_histogram(x = ~d1, name = "bygning") %>%
   add_histogram(x = ~d2, name = "Ikke bygning") %>%
-  layout(barmode = "overlay")
+  layout()
 ```
 
 
